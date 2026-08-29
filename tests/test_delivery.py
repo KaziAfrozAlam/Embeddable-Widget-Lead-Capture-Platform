@@ -90,3 +90,7 @@ def test_config_map_exposes_mode_locale_theme(client, auth, make_widget):
     assert body2["mode"] == "popover"        # cta widgets render a popover/launcher
     assert body2["styles"]["accent_color"] == "#9333ea"
     assert body2["locale"] == "en"
+
+    popover = make_widget(type="popover")
+    body3 = client.get(f"/widgets/{popover['id']}/config").json()
+    assert body3["mode"] == "popover"        # explicit popover type is not reported as inline
