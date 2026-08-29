@@ -60,7 +60,7 @@ def _config_dict(widget: Widget) -> dict:
         "button_text": widget.button_text,
         "styles": widget.styles,
         "api_base_url": settings.api_base_url,
-        "mode": "popover" if widget.type == "cta" else "inline",
+        "mode": "popover" if widget.type in ("cta", "popover") else "inline",
         "locale": (widget.styles or {}).get("locale", "en"),
     }
 
@@ -117,8 +117,14 @@ def get_alias_bundle() -> Response:
 def _validate_submission_data(widget: Widget, data: dict) -> None:
     """Reject unknown, missing-required, and type-invalid fields with a clean 422."""
     config_by_name = {f["name"]: f for f in widget.fields}
+    honeypot = honeypot_field(widget.id)
     errors: list[str] = []
     for name in data:
+        # widget.js always submits its own hidden honeypot field (empty for a
+        # human). A filled honeypot was already dropped above; an empty one is
+        # a normal visitor and must not be treated as an unknown field.
+        if name == honeypot:
+            continue
         if name not in config_by_name:
             errors.append(f"unknown field: {name}")
     for field in widget.fields:
