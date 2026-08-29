@@ -5,7 +5,7 @@ them on any website with a **single `<script>` tag**, and collect leads that are
 **validated, spam-filtered, rate-limited, geo-enriched (with a fallback chain), stored,
 and surfaced in a dashboard** — all on a $0 stack, no credit card.
 
-Tested against 58 behavior-level tests. Deterministic proofs for every acceptance
+Tested against 59 behavior-level tests. Deterministic proofs for every acceptance
 probe live in [EVIDENCE.md](EVIDENCE.md).
 
 ---
@@ -57,7 +57,7 @@ app/
   seed.py            demo tenant + widgets + sample leads
 migrations/          Alembic schema migrations
 website/             the second-origin "customer site" test page
-tests/               58 pytest tests covering every acceptance probe
+tests/               59 pytest tests covering every acceptance probe
 ```
 
 ## Setup (validated on Windows; everything free)
@@ -174,7 +174,7 @@ fallback proof deterministic), mail mode (console / stderr / fail / smtp) and wo
 ## Tests
 
 ```
-python -m pytest -q          # 58 tests, covers every Section-6 requirement
+python -m pytest -q          # 59 tests, covers every Section-6 requirement
 ```
 
 The suite includes: CORS preflight, config caching + 304, boundary validation,

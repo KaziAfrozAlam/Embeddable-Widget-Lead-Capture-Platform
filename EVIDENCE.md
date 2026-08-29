@@ -15,7 +15,7 @@ cp .env.example .env          # then set SECRET_KEY to anything >= 32 chars
 .venv/Scripts/python -m alembic upgrade head
 .venv/Scripts/python -m app.seed
 .venv/Scripts/ruff check app tests     # lint
-.venv/Scripts/python -m pytest -v      # 58 tests
+.venv/Scripts/python -m pytest -v      # 59 tests
 # run the API and the background worker:
 .venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 .venv/Scripts/python -m app.services.worker
@@ -27,30 +27,30 @@ cp .env.example .env          # then set SECRET_KEY to anything >= 32 chars
 One-command wrappers for both shells are checked in: `run.sh` / `run.ps1`.
 Docker/Postgres variant: `docker compose up --build` (Dockerfile + compose checked in).
 
-> Note: on this host port **8000** was occupied by an unkillable orphan process,
-> so the captured live transcripts below were recorded on **127.0.0.1:8001**
-> (the checked-in `.env.example` and docs use port **8000**; this machine's
-> git-ignored `.env` overrides `API_BASE_URL`/port to 8001). Functionally identical.
+> The orphan process that previously held port **8000** has been resolved; the
+> live demo runs on the documented port **8000** with `.env`
+> (`API_BASE_URL=http://localhost:8000`). The captured live transcripts below
+> were originally recorded on **127.0.0.1:8001** (functionally identical).
 
 ---
 
-## 1. Automated test suite — 58/58 green
+## 1. Automated test suite — 59/59 green
 
 ```
 $ .venv\Scripts\python -m pytest -q
-58 passed, 1 warning in ~11s          (warning: starlette TestClient deprecation)
+59 passed, 1 warning in ~11s          (warning: starlette TestClient deprecation)
 $ .venv\Scripts\ruff check app tests
 All checks passed!
 $ node --check app\renderer\widget.js   # renderer bundle is valid JS
 exit 0
 ```
 
-Inventory (58 tests, 10 files):
+Inventory (59 tests, 10 files):
 
 | File | Tests |
 |---|---|
 | `test_auth_widgets.py` | register/login/me, duplicate email rejected, concurrent duplicate → 409 (no 500), validation, CRUD requires auth, full CRUD, widget validation errors, tenant isolation for widgets, versioned embed snippet (9) |
-| `test_public_submissions.py` | valid cross-origin stored, unknown widget 404, malformed 400, oversized 413, invalid fields 4xx, idempotent replay, no duplicate rows, concurrent duplicate-token reconciles to existing row (no 500), honeypot silent drop, tenant-linked rows (10) |
+| `test_public_submissions.py` | valid cross-origin stored, unknown widget 404, malformed 400, oversized 413, invalid fields 4xx, idempotent replay, no duplicate rows, concurrent duplicate-token reconciles to existing row (no 500), honeypot silent drop, widget-script honeypot field not rejected, tenant-linked rows (11) |
 | `test_delivery.py` | config public+small, cache headers + 304, config 404, immutable versioned bundle, unknown version 404, short-cache alias, CORS preflight, config CORS, config-map mode/locale/theme (9) |
 | `test_abuse.py` | 429 + service survives, per-widget limit independent of IP, register/management not rate-limited (3) |
 | `test_worker.py` | email job queued post-submit, worker drains it, failing mailer retries→fails, side-effect never blocks submission, retry-then-success (5) |
