@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+ignore = [
+    "E501",
+    "B008",   # FastAPI idiom: Depends()/Query() in default argument position
+    "BLE001", # deliberate graceful-degradation except blocks (geo chain, worker)
+    "DTZ001", # naive UTC timestamps stored intentionally for SQLite/Postgres portability
+    "UP017",  # same naive-UTC decision
+    "S112",   # try/except continue is the whole fallback-chain pattern
+]

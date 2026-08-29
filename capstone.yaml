@@ -1,0 +1,38 @@
+# Manifest — read by the capstone evaluator
+name: flyrank-capstone-widget-platform
+language: "Python (FastAPI, SQLAlchemy 2, SQLite default / Postgres optional)"
+
+# One command that boots the system on a clean machine.
+#   Primary (zero infrastructure):
+run: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+#   Or with Postgres via Docker (recommended for reviewers with Docker):
+#     docker compose up --build
+#   Pre-steps for both:  python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
+#                        .venv/Scripts/python -m alembic upgrade head
+#   Background worker for queued side effects (run beside the API):
+#     python -m app.services.worker
+
+# Demo tenant + widgets:
+seed: python -m app.seed
+#   → demo@example.com / demo-pass-123
+
+test: python -m pytest -q
+
+base_url: http://localhost:8000
+
+endpoints:
+  healthz: GET /healthz
+  auth_register: POST /api/auth/register
+  auth_login: POST /api/auth/login
+  widget_create: POST /api/widgets
+  widget_list: GET /api/widgets
+  widget_embed: GET /api/widgets/{widget_id}/embed
+  widget_config: GET /widgets/{widget_id}/config
+  widget_script: GET /embed/{version}/widget.js
+  submissions: POST /submissions
+  dashboard_submissions: GET /api/dashboard/submissions
+  dashboard_stats: GET /api/dashboard/stats
+
+# Second origin (the "customer site" test page):
+customer_site: python -m http.server 5500 --directory website
+#   then open http://localhost:5500/customer-site.html
