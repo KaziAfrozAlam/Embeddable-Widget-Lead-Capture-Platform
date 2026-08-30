@@ -46,6 +46,9 @@ class PayloadSizeLimitMiddleware:
             except ValueError:
                 pass
 
+        def _has_cors_header(headers: list[tuple[bytes, bytes]]) -> bool:
+            return any(k.lower() == b"access-control-allow-origin" for k, v in headers)
+
         received = 0
 
         async def guarded_receive():
@@ -76,6 +79,8 @@ class PayloadSizeLimitMiddleware:
                     for k, v in message["headers"]
                     if k.lower() not in {b"content-length", b"content-type", b"content-encoding"}
                 ]
+                if not _has_cors_header(headers):
+                    headers.append((b"access-control-allow-origin", b"*"))
                 headers.append((b"content-type", b"application/json; charset=utf-8"))
                 headers.append((b"content-length", str(len(body)).encode("ascii")))
                 await send({"type": "http.response.start", "status": 413, "headers": headers})
@@ -93,9 +98,13 @@ class PayloadSizeLimitMiddleware:
             await self._reject(scope, receive, send)
 
     async def _reject(self, scope, receive, send) -> None:
+        # This middleware sits *outside* CORSMiddleware (add_middleware puts the
+        # last-registered middleware first), so its 413 would leave the server
+        # without CORS headers. Match the app's wide-open policy explicitly.
         response = JSONResponse(
             status_code=413,
             content={"detail": f"Payload too large; limit is {self.max_bytes} bytes"},
+            headers={"Access-Control-Allow-Origin": "*"},
         )
         await response(scope, receive, send)
 
