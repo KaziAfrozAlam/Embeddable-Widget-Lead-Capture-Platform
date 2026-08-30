@@ -60,6 +60,20 @@ def _status(sent, default=200):
     return default
 
 
+def _responder_headers(sent):
+    for message in sent:
+        if message["type"] == "http.response.start":
+            return dict(message["headers"])
+    return {}
+
+
+def _assert_413_is_cross_origin_readable(sent):
+    """The middleware sits outside CORS; its 413 must still carry
+    Access-Control-Allow-Origin or a browser treats it as an opaque failure."""
+    assert _status(sent) == 413
+    assert _responder_headers(sent)[b"access-control-allow-origin"] == b"*"
+
+
 def test_content_length_fast_path_rejects_before_app():
     # Content-Length alone is enough to reject; the app never runs.
     inner_called, sent = _run(
@@ -67,7 +81,7 @@ def test_content_length_fast_path_rejects_before_app():
         messages=[{"type": "http.request", "body": b"x" * 500, "more_body": False}],
     )
     assert inner_called is False
-    assert _status(sent) == 413
+    _assert_413_is_cross_origin_readable(sent)
 
 
 def test_chunked_body_without_content_length_is_capped():
@@ -80,7 +94,7 @@ def test_chunked_body_without_content_length_is_capped():
             {"type": "http.request", "body": b"b" * 60, "more_body": False},
         ],
     )
-    assert _status(sent) == 413
+    _assert_413_is_cross_origin_readable(sent)
 
 
 def test_body_at_limit_passes_through_unchanged():

@@ -87,3 +87,27 @@ def test_dashboard_list_pagination_and_filter(client, make_widget, owner, settin
     # filtering by another tenant's widget id → 404
     res = client.get("/api/dashboard/submissions?widget_id=nope", headers=_auth(owner))
     assert res.status_code == 404
+
+
+def test_stats_bucket_by_local_day_not_utc_day():
+    """'today' and the daily series follow the reader's local day, not UTC.
+
+    Regression: a UTC+5:30 lead filed at 01:30 local (20:00 UTC the previous
+    day) used to be dropped from 'today' and bucketed under yesterday's date.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.api.dashboard import _local_buckets, _local_date
+
+    tz = timezone(timedelta(hours=5, minutes=30))  # deterministic, any host
+    now_local = datetime(2026, 8, 30, 1, 30, tzinfo=tz)  # 08-29 20:00 UTC
+
+    today_start_utc, skeleton = _local_buckets(now_local)
+    assert today_start_utc == datetime(2026, 8, 29, 18, 30)  # local midnight as UTC
+    assert skeleton[0] == "2026-08-01"
+    assert skeleton[-1] == "2026-08-30"
+    assert len(skeleton) == 30
+
+    # stored at 08-29 20:00 UTC == local 08-30 01:30 → still "today" + today's bucket
+    assert _local_date(datetime(2026, 8, 29, 20, 0), now_local) == "2026-08-30"
+    # and a UTC-aligned scheme would have said 2026-08-29
