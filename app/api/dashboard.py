@@ -5,7 +5,7 @@ per-widget counts, and a geo (country) breakdown.
 """
 
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -13,10 +13,34 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import get_current_owner
-from ..models import Owner, Submission, Widget, utcnow
+from ..models import Owner, Submission, Widget
 from ..schemas import StatsOut, SubmissionList, SubmissionOut
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+def _local_buckets(now_local: datetime) -> tuple[datetime, list[str]]:
+    """Resolve a day boundary + 30-day skeleton in the given timezone.
+
+    Submissions are stored in naive UTC; "today" and the daily series must be
+    bucketed by the dashboard reader's *local* day, or the counts drift for
+    every timezone that isn't UTC (e.g. a 05:30 UTC+5:30 lead is still "today").
+
+    Returns (start-of-local-day-as-naive-UTC, [30 ascending YYYY-MM-DD keys]).
+    """
+    tz = now_local.tzinfo or timezone.utc
+    midnight_local = datetime(now_local.year, now_local.month, now_local.day, tzinfo=tz)
+    today_start_utc = midnight_local.astimezone(timezone.utc).replace(tzinfo=None)
+    skeleton = [
+        (midnight_local - timedelta(days=i)).strftime("%Y-%m-%d")
+        for i in range(29, -1, -1)
+    ]
+    return today_start_utc, skeleton
+
+
+def _local_date(created_utc: datetime, now_local: datetime) -> str:
+    tz = now_local.tzinfo or timezone.utc
+    return created_utc.replace(tzinfo=timezone.utc).astimezone(tz).strftime("%Y-%m-%d")
 
 
 @router.get("/submissions", response_model=SubmissionList)
@@ -59,16 +83,10 @@ def stats(
         select(Submission).where(Submission.owner_id == owner.id)
     ).all()
 
-    now = utcnow()
-    today_start = datetime(now.year, now.month, now.day)
-    week_ago = now - timedelta(days=7)
-
-    days_ago30 = now - timedelta(days=29)
-    daily = defaultdict(int)
-    cursor = days_ago30
-    while cursor <= now:
-        daily[cursor.strftime("%Y-%m-%d")] = 0
-        cursor += timedelta(days=1)
+    now_local = datetime.now().astimezone()
+    today_start_utc, daily_keys = _local_buckets(now_local)
+    daily = defaultdict(int, {k: 0 for k in daily_keys})
+    week_ago = today_start_utc - timedelta(days=7)
 
     by_widget = Counter()
     by_country = Counter()
@@ -78,11 +96,11 @@ def stats(
         by_widget[r.widget_id] += 1
         if r.geo_country:
             by_country[r.geo_country] += 1
-        if r.created_at >= today_start:
+        if r.created_at >= today_start_utc:
             today += 1
         if r.created_at >= week_ago:
             last_7 += 1
-        day_key = r.created_at.strftime("%Y-%m-%d")
+        day_key = _local_date(r.created_at, now_local)
         if day_key in daily:
             daily[day_key] += 1
 
