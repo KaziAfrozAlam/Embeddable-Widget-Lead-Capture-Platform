@@ -15,7 +15,7 @@ cp .env.example .env          # then set SECRET_KEY to anything >= 32 chars
 .venv/Scripts/python -m alembic upgrade head
 .venv/Scripts/python -m app.seed
 .venv/Scripts/ruff check app tests     # lint
-.venv/Scripts/python -m pytest -v      # 59 tests
+.venv/Scripts/python -m pytest -v      # 60 tests
 # run the API and the background worker:
 .venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 .venv/Scripts/python -m app.services.worker
@@ -34,18 +34,18 @@ Docker/Postgres variant: `docker compose up --build` (Dockerfile + compose check
 
 ---
 
-## 1. Automated test suite — 59/59 green
+## 1. Automated test suite — 60/60 green
 
 ```
 $ .venv\Scripts\python -m pytest -q
-59 passed, 1 warning in ~11s          (warning: starlette TestClient deprecation)
+60 passed, 1 warning in ~11s          (warning: starlette TestClient deprecation)
 $ .venv\Scripts\ruff check app tests
 All checks passed!
 $ node --check app\renderer\widget.js   # renderer bundle is valid JS
 exit 0
 ```
 
-Inventory (59 tests, 10 files):
+Inventory (60 tests, 10 files):
 
 | File | Tests |
 |---|---|
@@ -55,7 +55,7 @@ Inventory (59 tests, 10 files):
 | `test_abuse.py` | 429 + service survives, per-widget limit independent of IP, register/management not rate-limited (3) |
 | `test_worker.py` | email job queued post-submit, worker drains it, failing mailer retries→fails, side-effect never blocks submission, retry-then-success (5) |
 | `test_geo.py` | provider A answers, fallback B when A down, all-down still stored, private IP → no enrichment but stored (4) |
-| `test_dashboard.py` | empty state, auth required, counts + breakdown, list pagination + filter (4) |
+| `test_dashboard.py` | empty state, auth required, counts + breakdown, list pagination + filter, local-day bucket semantics (5) |
 | `test_rate_limit.py` | `client_ip` trust semantics: XFF ignored when not behind a proxy, trusted-proxy XFF used, forged/trailing entries ignored, invalid/missing fallbacks (7) |
 | `test_payload_guard.py` | streaming (chunked, no Content-Length) bodies capped at 16 384 B, Content-Length fast path, at-limit passes, non-POST untouched (4) |
 | `test_renderer.py` | inline form renders next to the embed script (not body-pinned), accent restricted to hex, versioned bundle byte-identical to served file (3) |
